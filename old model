@@ -1,0 +1,131 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* BT Labs */
+
+namespace uk.co.bt.zion.numberledger
+
+asset DirectoryNumber identified by dNumber {
+  o String   dNumber
+  -->NumberRange numberRange
+  --> CP rangeholdingCP
+  --> CP currentCP
+  --> CP pendingCP optional
+  o String gainingCPPortingPrefix regex =/^[5]+([0-9]{5})$/ optional
+  o NumberState  numberState
+  o String tokenId optional
+  o Boolean isInTransfer
+  o DirectoryNumberType DirectoryNumberType optional
+}
+
+enum NumberState {
+  o Working
+  o NotWorking
+}
+
+enum DirectoryNumberType {
+  o SingleLine
+  o MultiLine
+}
+
+asset NumberRange identified by nR {
+  o String   nR
+  --> CP rangeholdingCP
+  //o Boolean  transferState optional
+}
+
+
+participant CP identified by cupID {
+  o String cupID
+  o String legalName optional
+  o String ofcomId
+}
+
+participant Regulator extends CP {
+}
+
+transaction Port1_RegisterNumberForTransfer {
+  --> CP gainingCP
+  --> DirectoryNumber theNumber
+  o String gainingCPPortingPrefix regex =/^[5]+([0-9]{5})$/
+  o String requestExpiryTime optional
+}
+
+// PortOder is a twin asset to a DirectoryNumber and is created by executing the Port1 transaction.
+asset PortOrder identified by uniqueOrderId {
+  o String uniqueOrderId
+  --> CP gainingCP
+  //--> DirectoryNumber theNumber
+  o Integer theNumber
+  o String requestExpiryTime optional
+}
+
+
+transaction Port2_AcceptNumberForTransfer {
+  --> CP gainingCP
+  --> CP currentCP
+  --> DirectoryNumber theNumber
+  o String    port1TransactionID
+}
+
+transaction Port3_AutoPosponeTrigger { //EngageNumberTransfer {
+  --> CP gainingCP
+  --> CP currentCP
+  --> DirectoryNumber theNumber
+  o String transferRequestTransactionID
+  o String acceptTransferTransactionID
+  o String gainingCPPortingPrefix
+  o String requestExpiryTime optional
+}
+
+enum ReasonForRejection {
+  o Reason1
+  o Reason2
+  o Reason3
+}
+
+transaction Port4_RejectNumberTransferRequest {
+  --> CP gainingCP
+  --> CP currentCP
+  --> DirectoryNumber theNumber
+  o String transferRequestTransactionID
+  o ReasonForRejection reasonForRejection
+}
+
+
+event Port1Event {
+  
+  
+}
+
+event Port2Event {
+}
+
+event Port3Event {
+}
+
+
+
+
+
+
+transaction make_DirectoryNumber {
+ 
+}
+
+transaction Make_NumberRange{
+  o String   nR
+  --> CP rangeholdingCP
+  //o Boolean  transferState optional 
+}
