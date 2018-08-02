@@ -1,0 +1,196 @@
+
+
+query selectbyCP {
+
+description: "Select all directory numbers from a CP - must provide full CP asset name"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.DirectoryNumber
+
+WHERE ( _$target_CP == currentCP)
+
+}
+
+
+query selectaspecificnumber {
+
+description: "Select a specfifc number and get the current details"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.DirectoryNumber
+
+WHERE ( _$target_directory_number == dNumber )
+
+}
+
+
+
+query numbersbystatus {
+
+description: "Select numbers owned by a guven CP with a given Working/NotWorking status"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.DirectoryNumber
+
+WHERE ( _$target_status == numberState AND _$target_CP == currentCP )
+
+}
+
+query selectall {
+
+description: "Select all directory numbers "
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.DirectoryNumber
+ORDER BY dNumber
+
+}
+
+
+
+query select_ranges_owned_by_CP {
+
+description: "Select number rangesheld by a given CP"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.NumberRange
+
+WHERE ( _$target_CP == rangeholdingCP  )
+
+}
+
+query alltransactions {
+
+description: "Select all transactions within a timeframe  "
+
+statement:
+
+SELECT org.hyperledger.composer.system.HistorianRecord
+WHERE (  transactionTimestamp > _$start_time AND  transactionTimestamp < _$end_time)
+
+}
+
+query allport_1_trans{
+
+description: "select all transactions within a timeframe"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer
+
+WHERE (timestamp > _$start_time AND  timestamp < _$end_time )
+}
+
+query port_1_trans_by_id{
+
+description: "select  port1 by transaction id "
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer
+
+WHERE ( transactionId ==_$transactionID )
+}
+
+
+
+query port_1ordersbyCP{
+
+description: "Select all port_1 transactions by a given CP in a given time frame"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer
+
+WHERE ( _$target_CP == gainingCP AND timestamp > _$start_time AND  timestamp < _$end_time )
+ORDER BY timestamp 
+
+}
+
+query port_1ordersby_CLI{
+
+description: "Select all port_1 transactions by a given CP in a given time frame"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer
+
+WHERE ( _$target_CLI == theNumber AND timestamp > _$start_time AND  timestamp < _$end_time )
+ORDER BY timestamp 
+
+}
+
+
+
+query Allport_2_trans{
+
+description: "select all port 2 transactions"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer
+WHERE (timestamp > _$start_time AND  timestamp < _$end_time )
+}
+
+query port_2_trans_by_CP{
+
+description: "select port 2 transactions made by given CP"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer
+WHERE (_$target_CP == gainingCP AND timestamp > _$start_time AND  timestamp < _$end_time )
+}
+
+query port_2ordersby_CLI{
+
+description: "Select all port_2 transactions by a given CLI in a given time frame"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer
+
+WHERE ( _$target_CLI == theNumber AND timestamp > _$start_time AND  timestamp < _$end_time )
+ORDER BY timestamp 
+
+}
+
+
+query port_4_trans{
+
+description: "Select all port_4 (rejection) transactions"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port4_RejectNumberTransferRequest
+WHERE (timestamp > _$start_time AND  timestamp < _$end_time )
+
+}
+
+query port_4ordersby_CLI{
+
+description: "Select all port_4 transactions by a given CLI in a given time frame"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.Port4_RejectNumberTransferRequest
+
+WHERE ( _$target_CLI == theNumber AND timestamp > _$start_time AND  timestamp < _$end_time )
+ORDER BY timestamp 
+
+}
+
+query NumberRange{
+
+description: "Select all numberRange assets"
+
+statement:
+
+SELECT uk.co.bt.zion.numberledger.NumberRange
+
+}
