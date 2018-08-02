@@ -1,0 +1,247 @@
+
+rule NetworkAdminUser {
+    description: "Grant business network administrators full access to user resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "**"
+    action: ALLOW
+}
+
+rule NetworkAdminSystem {
+    description: "Grant business network administrators full access to system resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "org.hyperledger.composer.system.**"
+    action: ALLOW
+}
+
+/* BT Labs */
+
+rule SystemACL {
+  description:  "System ACL to permit all access"
+  participant: "org.hyperledger.composer.system.Participant"
+  operation: ALL
+  resource: "org.hyperledger.composer.system.**"
+  action: ALLOW
+}
+
+/* CP profile update rules */
+
+rule R1a_CPSeeUpdateThemselvesOnly {
+  description: "CP can see and update their own record only"
+  participant(t): "uk.co.bt.zion.numberledger.CP"
+  operation: ALL
+  resource(v): "uk.co.bt.zion.numberledger.CP"
+  condition: (v.getIdentifier() == t.getIdentifier())
+  action: ALLOW
+}
+
+/* Asset update rules */
+
+rule R1a_v001_DirectoryNumber_CPSeeUpdateThemselvesOnly {
+  description: "CP can see and update their own record only"
+  participant(t): "uk.co.bt.zion.numberledger.CP"
+  operation: READ, UPDATE
+  resource(v): "uk.co.bt.zion.numberledger.DirectoryNumber"
+  condition: (v.currentCP.getIdentifier() == t.getIdentifier())
+  action: ALLOW
+}
+
+
+rule R1b_v001_DirectoryNumber_CPGainingSeeUpdateThemselvesOnly {
+  description: "CP can see and update their own record only"
+  participant(t): "uk.co.bt.zion.numberledger.CP"
+  operation: READ, UPDATE
+  resource(v): "uk.co.bt.zion.numberledger.DirectoryNumber"
+  condition: (v.pendingCP.getIdentifier() == t.getIdentifier())
+  action: ALLOW
+}
+
+rule R1a_v001_NumberRange_CPSeeUpdateThemselvesOnly {
+  description: "CP can see and update their own record only"
+  participant(t): "uk.co.bt.zion.numberledger.CP"
+  operation: READ, UPDATE
+  resource(v): "uk.co.bt.zion.numberledger.NumberRange"
+  condition: (v.rangeholdingCP.getIdentifier() == t.getIdentifier())
+  action: ALLOW
+}
+
+/* Asset visibility rules */
+
+rule DirectoryNumberOwnerHasFullAccessToTheirAssets {
+    description: "Allow all participants full access to their assets"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.DirectoryNumber"
+    condition: (r.currentCP.getIdentifier() === p.getIdentifier())
+    action: ALLOW
+}
+
+rule DirectoryNumberAllHaveReadAccessToAssets {
+    description: "Allow all participants full access to their assets"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: READ
+    resource(r): "uk.co.bt.zion.numberledger.DirectoryNumber"
+    condition: (r.currentCP.getIdentifier() != p.getIdentifier())
+    action: ALLOW
+}
+
+rule NumberRangeOwnerHasFullAccessToTheirAssets {
+    description: "Allow all participants full access to their assets"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.NumberRange"
+    condition: (r.rangeholdingCP.getIdentifier() === p.getIdentifier())
+    action: ALLOW
+}
+
+
+
+/* Transaction Rules */
+
+rule TR1_RegisterNumberTransferRequest {
+    description: "Enable CP to submit transactions"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer"
+    condition: (r.gainingCP.getIdentifier() === p.getIdentifier()) //|| r.theNumber.currentCP.getIdentifier() === p.getIdentifier()) //The second condition is only if the current CP wanted to raise an internal transfer reqest.
+    action: ALLOW
+}
+
+rule TR2_AcceptNumberTransferRequest {
+    description: "Enable CP to Accept Number transfer request"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer"
+    condition: (r.currentCP.getIdentifier() === p.getIdentifier() && r.theNumber.currentCP.getIdentifier() === p.getIdentifier() )//&& r.transferRequestTransactionID.gainingCP.getIdentifier() === r.gainingCP.getIdentifier())
+    action: ALLOW
+}
+
+rule TR3_AutoPosponeTriggerRequest {
+    description: "Enable CP to Accept Number transfer request and engage Auto-Postpone Trigger"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port3_AutoPosponeTrigger"
+    condition: (r.gainingCP.getIdentifier() === p.getIdentifier() )
+    action: ALLOW
+}
+
+rule TR2_RejectNumberTransferRequest {
+    description: "Enable CP to Accept Number transfer request"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port4_RejectNumberTransferRequest"
+    condition: (r.currentCP.getIdentifier() === p.getIdentifier() && r.theNumber.currentCP.getIdentifier() === p.getIdentifier() )//&& r.transferRequestTransactionID.gainingCP.getIdentifier() === r.gainingCP.getIdentifier())
+    action: ALLOW
+}
+
+/* Transaction History View Rules */
+
+rule THR1_EnableViewOfNumberTransferRequest {
+    description: "Enable CP to submit transactions"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer"
+    condition: (r.theNumber.currentCP.getIdentifier() === p.getIdentifier())
+    action: ALLOW
+}
+
+rule THR2_EnableViewOfAcceptNumberTransferRequest {
+    description: "Enable CP to submit transactions"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer"
+    condition: (r.gainingCP.getIdentifier() === p.getIdentifier())
+    action: ALLOW
+}
+
+rule THR3_EnableViewOfAutoPosponeTriggerRequest {
+    description: "Enable CP to Accept Number transfer request"
+    participant(p): "uk.co.bt.zion.numberledger.CP"
+    operation: ALL
+    resource(r): "uk.co.bt.zion.numberledger.Port3_AutoPosponeTrigger"
+    condition: (r.theNumber.currentCP.getIdentifier() === p.getIdentifier())
+    action: ALLOW
+}
+
+/* Regulator Rules */
+
+rule HR4a_RegulatorSeeThemselves {
+  description: "Regulators can see and update their own record"
+  participant: "uk.co.bt.zion.numberledger.Regulator"
+  operation: READ, UPDATE
+  resource: "uk.co.bt.zion.numberledger.Regulator"
+  action: ALLOW
+}
+rule HR4b_RegNumberRangeView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.NumberRange"
+    action: ALLOW
+}
+rule HR4b_RegDirectoryNumberView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.DirectoryNumber"
+    action: ALLOW
+}
+
+rule HR4b_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.CP"
+    action: ALLOW
+}
+
+// for now I have provided read and write access to Ofcom(regulkator) for convenience- change to read inly later 
+rule Port1_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer"
+    action: ALLOW
+}
+
+
+
+rule Port2_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer"
+    action: ALLOW
+}
+
+
+ 
+rule Port3_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.Port3_AutoPosponeTrigger"
+    action: ALLOW
+}
+
+rule Port4_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.Port4_RejectNumberTransferRequest"
+    action: ALLOW
+}
+
+rule test_trans_RegCPView {
+    description: "Grant Regulator full access to NumberRange"
+    participant: "uk.co.bt.zion.numberledger.Regulator"
+    operation: ALL
+    resource: "uk.co.bt.zion.numberledger.Make_NumberRange"
+    action: ALLOW
+}
+
+
+
+
+
