@@ -1,0 +1,243 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * BT Labs
+ *
+ */
+
+/* global getAssetRegistry */
+/*eslint-disable no-unused-vars*/
+/*eslint-disable no-undef*/
+
+'use strict';
+
+
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Port1_RegisterNumberForTransfer} trax the number to be transferred
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+async function onRegisterNumberForTransfer(tx) {
+    
+      //might not need this will test if automatically rejects non existing numbers
+      let NumRegistry= await getParticipantRegistry('uk.co.bt.zion.numberledger.DirectoryNumber') 
+      let does_exist = NumRegistry.exists(tx.theNumber.getIdentifier());
+      if(!does_exist) {
+         throw Error('Number does not exist' )
+       }  
+      
+       //Ensure the DirectoryNumber isn't already in Port
+       oldtransferstate = tx.theNumber.isInTransfer;
+       if (tx.portStatus) {
+       		throw new Error('Error: DirectoryNumber is already engaged in Port.');
+   	   }
+       // Emit an event
+ 	   let factory = getFactory();
+  	   let basicEvent = factory.newEvent('uk.co.bt.zion.numberledger', 'Port1Event');
+       emit(basicEvent);
+  
+   
+  
+}
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Port2_AcceptNumberForTransfer} tx the number to be transferred
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+
+async function onAcceptNumberForTransfer(tx) {
+  // get results of query for port_1 transactions filtered by id
+  //Dependency: This transaction depends on the Query 'port_1_trans_by_id' ??
+  let result = await query('port_1_trans_by_id', {'transactionID': tx.port1TransactionID});
+  
+  //check that the given port1 request exists
+  //TechDebt: 
+  if (result === null || result == undefined || result == '') {
+  throw new Error ("NLError:101: The Port1 you are referring to does not exist. Cannot proceed with this transaction.") ;    
+  }
+  
+  // check of Port1 transactionID.gainingCP = Port2 (this) transaction.gainingCP
+  if ( tx.gainingCP.getIdentifier()!= result[0].gainingCP.getIdentifier()){
+  throw new Error("NLError:102: The Port1 request you refered to, wasn't made by the gaining CP you specified in this transaction." );
+  }
+  // check number specified in Port2(this) agrees with the port1 transaction
+  if ( tx.theNumber.getIdentifier()!= result[0].theNumber.getIdentifier()){ 
+  throw new Error("The Port1 request you referred to wasn't for the number that you specified in this port2 transaction" );
+  }
+  // To stop other CPs claiming to be the current owner of the number 
+  if ( tx.currentCP.getIdentifier()!= tx.theNumber.currentCP.getIdentifier()){ 
+  throw new Error("The currentCP specified in this transaction (should be you) isn't the owner of the number specified in this transaction " );
+  }
+  
+  
+  
+    //Add Time check of transaction
+    //Ensure the DirectoryNumber isn't already scheduled for transfer
+
+  if (portStatus) {
+  throw new Error('Error: DirectoryNumber is already engaged in transfer.');
+  }
+  //update DirectoryAsset to be in transfer
+  tx.theNumber.isInTransfer = true;
+  tx.theNumber.pendingCP = tx.gainingCP;
+  tx.theNumber.gainingCPPortingPrefix = "500002";
+  //Retrive the DirectoryNumber assetRegistry
+  let assetRegistry = await getAssetRegistry('uk.co.bt.zion.numberledger.DirectoryNumber');
+  //Commit the status of the DirectoryNumber to being ready for transfer
+  await assetRegistry.update(tx.theNumber);
+  // Emit an even
+  let factory = getFactory();
+  let basicEvent = factory.newEvent('uk.co.bt.zion.numberledger', 'Port2Event');
+  emit(basicEvent);
+  
+}
+
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Port3_AutoPosponeTrigger} numberForTransfer the number to be transferred
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+function onAutoPosponeTrigger(numberForTransfer) {
+    //Add check of transactionID.gainingCP = this transactionID.CP
+    //Add Time check of transaction
+    
+}
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Port4_RejectNumberTransferRequest} numberForTransfer the number to be transferred
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+function onRejectNumberTransferRequest(numberForTransfer) {
+    /*//Add check of transactionID.gainingCP = this transactionID.CP
+    //Add Time check of transaction
+    console.log('### onRegisterNumberForTransfer ' + numberForTransfer.toString());
+
+    // Update the asset with the new value.
+    numberForTransfer.theNumber.gainingCPPortingPrefix = numberForTransfer.gainingCPPortingPrefix;
+    return getAssetRegistry('uk.co.bt.zion.numberledger.DirectoryNumber').then(function(result) {
+        return result.update(numberForTransfer.theNumber);
+    }
+    );*/
+}
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Make_NumberRange} trax the number to be transferred
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+async function on_Make_NumberRange(tx){
+    // get CP_Registry 
+	let CP_Registry = await getParticipantRegistry('uk.co.bt.zion.numberledger.CP') ; 
+    
+    // boolean refers to existence of the rangeHolding CP specified for this transaction
+	let CPexists =await CP_Registry.exists(tx.rangeholdingCP.getIdentifier());
+
+    
+	if (!CPexists){
+		throw new Error ("rangeholdingCP specified does not exist in CP registry");
+	}
+  
+    // the number range string specified for this transaction - will later check against pre-existing number ranges 
+	let this_nR = tx.nR;
+
+    //chose [NOT ( less that or equal to)] instead of [more than] to additionally deal with inputs of the wrong format
+    //invalid inputs will lead to NOT(false) since inequality meaningless so will trigger the error too
+	if (!(lower_limit(this_nR) <= upper_limit(this_nR)) ) {
+		throw new Error( 'Please enter lower and upper limits for range as llllllllll:uuuuuuuuuu' ); 
+	}
+    // makes sure lower and upper bounds are 10 digits (but 11 here due to the leading '1' we added
+	if (lower_limit(this_nR) < 10000000000 || upper_limit(this_nR) > 19999999999) {
+		throw new Error( 'Please enter upper and lower limits for nR as llllllllll:uuuuuuuuuu' ); 
+	}
+    
+    //get the registry of numberRange assets 
+    //DEPENDS on NumberRange query defined in queryfile
+	let nR_Registry = await query('NumberRange');
+  
+	// check there are no overlaps between specified (this) number range and pre - existing ones in the registry
+	for (var i=0 ; i <nR_Registry.length;i++){
+    
+		// reg_nR refers to a number range already stored in the registry
+		let reg_nR = nR_Registry[i].getIdentifier();
+  
+		// check for overlap by examining upper and lower bounds 
+		if (   (upper_limit(reg_nR) >= lower_limit(this_nR)) == (upper_limit(this_nR) >= lower_limit(reg_nR))  ){
+			throw new Error("The number range specified has overlaps with existing number ranges in the registry:" + reg_nR); 
+    
+		}
+  
+	}
+
+  // Validation done now NumberRange create asset below 
+  /*
+  let factory = getFactory();
+  
+  new_range = factory.newResource('uk.co.bt.zion.numberledger','NumberRange', tx.nR);
+  new_range.rangeholdingCP = tx.rangeholdingCP;
+  new_range.transferState = tx.transferState
+  
+  let nRregistry = await getAssetRegistry("uk.co.bt.zion.numberledger.NumberRange");
+  await nRregistry.add(new_range);
+  */
+  let basicEvent = factory.newEvent('uk.co.bt.zion.numberledger', 'Port2Event');
+  emit(basicEvent);
+}
+
+/**
+ * Process a number that is held for transfer
+ * @param {uk.co.bt.zion.numberledger.Make_DirectoryNumber} tx the transaction
+ * @return {Promise} Asset Registry Promise
+ * @transaction
+ */
+/*async function on_Make_DirectoryNumber(tx){
+let dNumber = Number('1'+ tx.dNumber) ;
+let nR = tx.numberRange.getIdentifier();
+
+if (!(lower_limit(nR) <=dNumber && upper_limit(nR)>= dNumber)){
+    throw new Error( "You have not specified a valid number that fits in the specified number range")
+    
+    }
+if (tx.currentCP != tx.numberRange.rangeholdingCP){
+throw new Error("Specified currentCP (you) is not owner of the NumberRange")
+  
+}
+
+ 
+}
+
+*/
+//obtains the lower limit of a number range 'adjusted' to account for values starting with 0
+function lower_limit(nR){
+
+  // add leading '1' to deal with values starting with 0 
+  let l_limit = nR.substring(0,10);
+  l_limit= Math.floor(Number("1"+ l_limit )); 
+  return l_limit;
+}
+
+//same principle as for lower_limit but now for the upper bound of a number range 
+function upper_limit(nR){
+  let u_limit = nR.substring(11);
+  u_limit = Math.floor(Number("1"+ u_limit)); 
+  return u_limit;
+}
+
